@@ -25,13 +25,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/linuxman1/guestbook.git'
+                git url: 'https://github.com/st-tu-dresden/guestbook.git'
             }
         }
         stage('Build') {
             steps {
                 container('maven') {
-                    sh 'mvn clean install'
+                    sh './mvnw clean package'
                 }
             }
         }
@@ -44,7 +44,14 @@ pipeline {
         }
         stage('Dependency Check') {
             steps {
-                sh 'mvn org.owasp:dependency-check-maven:check'
+                sh './mvnw org.owasp:dependency-check-maven:check'
+            }
+        }
+        stage('Run') {
+            steps {
+                container('maven') {
+                    sh './mvnw spring-boot:run'
+                }
             }
         }
         stage('Deploy') {
