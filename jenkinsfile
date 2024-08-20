@@ -25,7 +25,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/st-tu-dresden/guestbook.git'
+                git url: 'https://github.com/st-tu-dresden/guestbook.git', branch: 'main'
             }
         }
         stage('Build') {
