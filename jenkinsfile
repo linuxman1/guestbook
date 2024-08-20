@@ -10,7 +10,7 @@ pipeline {
                 image: jenkins/inbound-agent
                 args: ['\$(JENKINS_SECRET)', '\$(JENKINS_NAME)']
               - name: maven
-                image: maven:3.6.3-jdk-8
+                image: maven:3.6.3-jdk-11
                 command:
                 - cat
                 tty: true
@@ -25,20 +25,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/st-tu-dresden/guestbook.git', branch: 'main'
+                git url: 'https://github.com/spring-projects/spring-petclinic.git', branch: 'main'
             }
         }
         stage('Build') {
             steps {
                 container('maven') {
                     sh './mvnw clean package'
-                }
-            }
-        }
-        stage('Run') {
-            steps {
-                container('maven') {
-                    sh './mvnw spring-boot:run'
                 }
             }
         }
@@ -54,11 +47,17 @@ pipeline {
                 sh './mvnw org.owasp:dependency-check-maven:check'
             }
         }
-
+        stage('Run') {
+            steps {
+                container('maven') {
+                    sh './mvnw spring-boot:run'
+                }
+            }
+        }
         stage('Deploy') {
             steps {
                 script {
-                    def dockerImage = docker.build("guestbook:latest")
+                    def dockerImage = docker.build("spring-petclinic:latest")
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
                         dockerImage.push()
                     }
@@ -71,4 +70,3 @@ pipeline {
         }
     }
 }
-
