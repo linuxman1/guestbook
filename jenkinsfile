@@ -16,7 +16,8 @@ kubernetes {
           requests:
             memory: 2Gi
   '''
-}}
+}
+}
   stage('SCM') {
     checkout scm
   }
