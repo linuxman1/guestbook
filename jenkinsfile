@@ -1,4 +1,38 @@
 node {
+kubernetes {
+  yaml '''
+    apiVersion: v1
+    kind: Pod
+    spec:
+      containers:
+      - name: sonar-scanner
+        image: sonarsource/sonar-scanner-cli:latest
+        command:
+        - cat
+        tty: true
+        resources:
+          limits:
+            memory: 4Gi
+          requests:
+            memory: 2Gi
+  '''
+}
+kubernetes {
+  yaml '''
+    apiVersion: v1
+    kind: Pod
+    spec:
+      volumes:
+      - name: workspace-volume
+        persistentVolumeClaim:
+          claimName: jenkins-workspace-pvc
+      containers:
+      - name: sonar-scanner
+        volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+  '''
+}
   stage('SCM') {
     checkout scm
   }
