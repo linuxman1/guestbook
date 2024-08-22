@@ -27,4 +27,3 @@ kubernetes {
       sh "${mvn}/bin/mvn clean package sonar:sonar -Dsonar.projectKey=guestbook -Dsonar.projectName='guestbook'"
     }
   }
-}
