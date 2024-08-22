@@ -16,23 +16,7 @@ kubernetes {
           requests:
             memory: 2Gi
   '''
-}
-kubernetes {
-  yaml '''
-    apiVersion: v1
-    kind: Pod
-    spec:
-      volumes:
-      - name: workspace-volume
-        persistentVolumeClaim:
-          claimName: jenkins-workspace-pvc
-      containers:
-      - name: sonar-scanner
-        volumeMounts:
-        - name: workspace-volume
-          mountPath: /home/jenkins/agent
-  '''
-}
+}}
   stage('SCM') {
     checkout scm
   }
