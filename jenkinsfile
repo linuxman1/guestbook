@@ -45,11 +45,10 @@ pipeline {
         }
     }
 
-
     environment {
         DOCKER_CREDENTIALS_ID = '68d22450-bfc7-40d0-ae3f-153ccc8f9e4f'
         DOCKER_IMAGE = "linuxmanl/petclinic:${env.BUILD_ID}"
-   
+    }
 
     stages {
         stage('Checkout') {
@@ -119,7 +118,8 @@ pipeline {
                     }
                 }
             }
-       
+        }
+    }
 
     post {
         always {
@@ -140,7 +140,4 @@ pipeline {
             echo 'Pipeline failed!'
         }
     }
-}
-}
-}
 }
