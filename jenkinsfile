@@ -1,29 +1,143 @@
-node {
-kubernetes {
-  yaml '''
-    apiVersion: v1
-    kind: Pod
-    spec:
-      containers:
-      - name: sonar-scanner
-        image: sonarsource/sonar-scanner-cli:latest
-        command:
-        - cat
-        tty: true
-        resources:
-          limits:
-            memory: 4Gi
-          requests:
-            memory: 2Gi
-  '''
-}
-}
-  stage('SCM') {
-    checkout scm
-  }
-  stage('SonarQube Analysis') {
-    def mvn = tool 'maven';
-    withSonarQubeEnv() {
-      sh "${mvn}/bin/mvn clean package sonar:sonar -Dsonar.projectKey=guestbook -Dsonar.projectName='guestbook'"
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                  - name: maven
+                    image: maven:3.8-openjdk-17
+                    command:
+                    - cat
+                    tty: true
+                    resources:
+                      limits:
+                        memory: 4Gi
+                      requests:
+                        memory: 2Gi
+                  - name: sonar-scanner
+                    image: sonarsource/sonar-scanner-cli:latest
+                    command:
+                    - cat
+                    tty: true
+                    resources:
+                      limits:
+                        memory: 4Gi
+                      requests:
+                        memory: 2Gi
+                  - name: docker
+                    image: docker:20.10.7-dind
+                    securityContext:
+                      privileged: true
+                    volumeMounts:
+                    - name: docker-graph-storage
+                      mountPath: /var/lib/docker
+                  - name: trivy
+                    image: aquasec/trivy:latest
+                    command:
+                    - cat
+                    tty: true
+                  volumes:
+                  - name: docker-graph-storage
+                    emptyDir: {}
+            '''
+        }
     }
-  }
+
+
+    environment {
+        DOCKER_CREDENTIALS_ID = '68d22450-bfc7-40d0-ae3f-153ccc8f9e4f'
+        DOCKER_IMAGE = "linuxmanl/petclinic:${env.BUILD_ID}"
+   
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                container('maven') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                container('maven') {
+                    sh 'mvn test'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                container('maven') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh 'mvn sonar:sonar -Dsonar.projectKey=guestbook -Dsonar.projectName="guestbook"'
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                container('docker') {
+                    sh "docker build -t ${DOCKER_IMAGE} ."
+                }
+            }
+        }
+
+        stage('Scan Docker Image') {
+            steps {
+                container('trivy') {
+                    sh "trivy image ${DOCKER_IMAGE}"
+                }
+            }
+        }
+    
+        stage('Push Docker Image') {
+            steps {
+                container('docker') {
+                    withCredentials([string(credentialsId: '68d22450-bfc7-40d0-ae3f-153ccc8f9e4f', variable: 'DOCKER_ACCESS_TOKEN')]) {
+                        sh """
+                        echo \$DOCKER_ACCESS_TOKEN | docker login -u linuxmanl --password-stdin
+                        docker push ${DOCKER_IMAGE}
+                        """
+                    }
+                }
+            }
+       
+
+    post {
+        always {
+            junit '**/target/surefire-reports/*.xml'
+            publishHTML(target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'target/site/jacoco',
+                reportFiles: 'index.html',
+                reportName: 'Code Coverage Report'
+            ])
+        }
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
