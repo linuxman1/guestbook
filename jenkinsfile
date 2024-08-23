@@ -73,15 +73,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                container('maven') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh 'mvn sonar:sonar -Dsonar.projectKey=guestbook -Dsonar.projectName="guestbook"'
-                    }
-                }
-            }
-        }
+      
 
         stage('Quality Gate') {
             steps {
